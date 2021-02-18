@@ -1,7 +1,9 @@
 import { Job } from "../entity/Job";
 import { Arg, Mutation, Query, Resolver, Int } from "type-graphql";
 import { JobInput } from "../InputTypes/JobInput";
-import { Like } from "typeorm";
+import { getRepository, Like } from "typeorm";
+import buildSearchQuery from "src/helpers/buildSearchQuery";
+import { SearchInput } from "src/InputTypes/SearchInput";
 
 
 @Resolver()
@@ -44,18 +46,23 @@ export class JobResolver {
 
 
     @Query(() => String)
-    Delete() {
-        return "helloFrom JObs"
+    async Delete(
+        @Arg("id", () => Int) id: number
+    ) {
+        return await Job.delete(id)
     }
 
 
     @Query(() => [Job])
     async search(
-        @Arg("term") term: string
+        @Arg("filters", () => SearchInput) filters: SearchInput,
+        @Arg("limit", () => Int) limit: number,
+        @Arg("offset", () => Int) offset: number,
     ) {
-        term = term.toLowerCase()
-        const data = await Job.find({ title: Like(`%${term}%`) })
-        return data
+        let jobQB = getRepository(Job).createQueryBuilder("job")
+        buildSearchQuery(jobQB, filters)
+        const jobs = await jobQB.skip(offset).take(limit).getMany()
+        return jobs
 
     }
 }
