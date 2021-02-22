@@ -1,13 +1,17 @@
-import { Recruiter } from "../entity/Recruiter"
 import { getConnection } from "typeorm"
 import { Query, Resolver, Mutation, Arg, Ctx, ObjectType, Field, UseMiddleware, Int } from "type-graphql"
+import { verify } from "jsonwebtoken"
 import { hash, compare } from "bcryptjs"
+import { v4 } from "uuid"
+
+import { Recruiter } from "../entity/Recruiter"
 import { MyContext } from "./MyContext"
 import { RecruiterInput } from "../InputTypes/RecruiterInput"
 import { createAccessToken, createRefreshToken } from "../helpers/auth"
 import { isAuth } from "../helpers/isAuth"
 import { sendRefreshToken } from "../helpers/sendRefreshToken"
-import { verify } from "jsonwebtoken"
+import { redis } from "../redis"
+import { sendEmail } from "../helpers/sendEmail"
 
 @ObjectType()
 class LoginResponse {
@@ -151,6 +155,53 @@ export class RecruiterResolver {
             return false
         }
         return true
+    }
+
+    @Mutation(() => Boolean)
+    async forgotPassword(
+        @Arg("email") email: string
+    ): Promise<boolean> {
+        const recruiter = await Recruiter.findOne({ where: { email } })
+
+        if (!recruiter) {
+            return true
+        }
+
+        const token = v4()
+
+        await redis.set(token, recruiter.id, "ex", 60 * 60 * 24);
+        const url = `http://localhost:3000/user/change-password/${token}`
+
+        await sendEmail(email, url)
+
+        return true
+    }
+
+    @Mutation(() => Recruiter)
+    async changePassword(
+        @Arg("token") token: string,
+        @Arg("newPassword") newPassword: string
+    ): Promise<Recruiter | null> {
+        const recruiterId = await redis.get(token)
+        if (!recruiterId) {
+            return null
+        }
+
+        const recruiter = await Recruiter.findOne(recruiterId)
+
+        if (!recruiter) {
+            return null
+        }
+
+        await redis.del(token)
+
+        const hashedPassword = await hash(newPassword, 12)
+
+        recruiter.password = hashedPassword
+
+        await recruiter.save()
+
+        return recruiter
     }
 
 

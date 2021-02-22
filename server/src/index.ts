@@ -5,6 +5,10 @@ import cors from "cors"
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
 import cookieParser from "cookie-parser";
+import session from "express-session"
+import connectRedis from "connect-redis"
+
+import { redis } from "./redis"
 import { JobResolver } from "./resolvers/JobResolver";
 import { RecruiterResolver } from "./resolvers/RecruiterResolver";
 import refreshToken from "./routes/refreshToken"
@@ -33,6 +37,25 @@ import refreshToken from "./routes/refreshToken"
     }),
     context: ({ req, res }) => ({ req, res })
   });
+
+  const RedisStore = connectRedis(session)
+
+  app.use(
+    session({
+      store: new RedisStore({
+        client: redis as any
+      }),
+      name: "qid",
+      secret: "redisstoresecret",
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 1000 * 60 * 60 * 24 * 7 * 365 // 7 years
+      }
+    })
+  );
 
   apolloServer.applyMiddleware({ app, cors: false })
   const port = process.env.PORT || 4000

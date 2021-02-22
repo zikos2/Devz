@@ -1,7 +1,7 @@
 import { Job } from "../entity/Job";
 import { Arg, Mutation, Query, Resolver, Int } from "type-graphql";
 import { JobInput } from "../InputTypes/JobInput";
-import { getRepository, Like } from "typeorm";
+import { getRepository } from "typeorm";
 import buildSearchQuery from "src/helpers/buildSearchQuery";
 import { SearchInput } from "src/InputTypes/SearchInput";
 
