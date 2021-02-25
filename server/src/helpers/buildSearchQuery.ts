@@ -1,5 +1,5 @@
-import { Job } from "src/entity/Job"
-import { SearchInput } from "src/InputTypes/SearchInput"
+import { Job } from "../entity/Job"
+import { SearchInput } from "../InputTypes/SearchInput"
 import { SelectQueryBuilder } from "typeorm"
 
 const buildSearchQuery = (jobQB: SelectQueryBuilder<Job>, filters: SearchInput) => {
